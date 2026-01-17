@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SpeedLeague</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Dark Mode Toggle Button -->
+    <button id="dark-mode-toggle">🌙</button>
+
+    <!-- Header -->
+    <header>
+        <h1>SpeedLeague</h1>
+        <nav>
+            <a href="{{ url_for('main.index') }}">Home</a> |
+            <a href="{{ url_for('main.games') }}">Games</a> |
+            <a href="{{ url_for('main.runs') }}">Runs</a> |
+            <a href="{{ url_for('main.docs') }}">Docs</a>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

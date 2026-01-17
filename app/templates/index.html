@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section id="overview">
+    <div class="centered-content">
+        <h2>What is SpeedLeague?</h2>
+        <div class="scrollable">
+            <p>
+                SpeedLeague is a 12-month speedrun competition across 9 games. 
+                Players compete for the fastest times in each game, earn points 
+                based on placement, and the player with the most total points 
+                across all games wins!
+            </p>
+        </div>
+    </div>
+</section>
+
+<section id="leaderboard">
+    <div class="centered-content">
+        <h2>Overall Leaderboard</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player</th>
+                    <th>Points</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for player, points in leaderboard %}
+                <tr class="
+                    {% if loop.index == 1 %}first-place
+                    {% elif loop.index == 2 %}second-place
+                    {% elif loop.index == 3 %}third-place
+                    {% endif %}
+                ">
+                    <td>{{ loop.index }}</td>
+                    <td>{{ player }}</td>
+                    <td>{{ points }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+

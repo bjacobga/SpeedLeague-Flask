@@ -1,0 +1,215 @@
+/* =========================
+   GLOBAL STYLES
+   ========================= */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f5f5f5; /* light mode background */
+    color: #111;
+}
+
+body.dark-mode {
+    background-color: #121212; /* dark mode background */
+    color: #f1f1f1;
+}
+
+a {
+    color: inherit;
+}
+
+/* =========================
+   HEADER & NAVIGATION
+   ========================= */
+header {
+    text-align: center;
+    padding: 20px;
+}
+
+header h1 {
+    margin-bottom: 10px;
+}
+
+header nav {
+    margin-top: 10px;
+}
+
+header nav a {
+    margin: 0 10px;
+    text-decoration: none;
+    font-weight: bold;
+    transition: color 0.3s;
+}
+
+/* =========================
+   DARK MODE TOGGLE BUTTON
+   ========================= */
+#dark-mode-toggle {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    background-color: #eee;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 1000;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+body.dark-mode #dark-mode-toggle {
+    background-color: #333;
+    color: #f1f1f1;
+}
+
+/* =========================
+   CENTERED CONTENT
+   ========================= */
+.centered-content {
+    text-align: center;
+    max-width: 900px;
+    margin: 20px auto;
+}
+
+.centered-content h2 {
+    margin-bottom: 15px;
+}
+
+/* =========================
+   GAMES DROPDOWN FORM
+   ========================= */
+form {
+    margin: 20px 0;
+    text-align: center;
+}
+
+form label {
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+form select {
+    padding: 6px 10px;
+    font-size: 16px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background-color: #fff;
+    color: #111;
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+body.dark-mode form select {
+    background-color: #333;
+    color: #f1f1f1;
+    border-color: #555;
+}
+
+/* =========================
+   TABLE STYLING
+   ========================= */
+table {
+    width: 90%;
+    margin: 20px auto 40px auto;
+    border-collapse: collapse;
+}
+
+table thead {
+    background-color: #444;
+    color: white;
+}
+
+body.dark-mode table thead {
+    background-color: #222;
+}
+
+table th, table td {
+    padding: 12px 15px;
+    border: 1px solid #ccc;
+    text-align: center;
+}
+
+body.dark-mode table th, body.dark-mode table td {
+    border-color: #555;
+}
+
+/* Highlight top 3 rows */
+.first-place {
+    background-color: gold;
+    font-weight: bold;
+    color: black;
+}
+
+.second-place {
+    background-color: silver;
+    font-weight: bold;
+    color: black;
+}
+
+.third-place {
+    background-color: #cd7f32; /* bronze */
+    font-weight: bold;
+    color: black;
+}
+
+/* =========================
+   RESPONSIVE TABLES
+   ========================= */
+@media (max-width: 600px) {
+    table, thead, tbody, th, td, tr {
+        display: block;
+    }
+    table thead tr {
+        display: none;
+    }
+    table tr {
+        margin-bottom: 15px;
+    }
+    table td {
+        text-align: right;
+        padding-left: 50%;
+        position: relative;
+    }
+    table td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 10px;
+        font-weight: bold;
+    }
+}
+
+/* =========================
+   CHART CONTAINER
+   ========================= */
+.chart-container {
+    width: 90%;
+    max-width: 800px;
+    height: 400px;
+    margin: 20px auto 40px auto;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+body.dark-mode .chart-container {
+    background-color: #222;
+    border-color: #555;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+
+
+.chart-container {
+    width: 90%;        /* take up 90% of parent width */
+    max-width: 800px;  /* never larger than 800px */
+    height: 400px;     /* default height */
+    margin: 0 auto 40px auto; /* center container */
+}
+
+@media (max-width: 600px) {
+    .chart-container {
+        width: 100%;   /* full width on small screens */
+        height: 300px; /* reduce height for mobile */
+    }
+}

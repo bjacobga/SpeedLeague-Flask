@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="centered-content">
+    <h2>Game Leaderboard</h2>
+
+    <!-- Game selection dropdown -->
+    <form method="get" action="{{ url_for('main.games') }}">
+        <label for="game-select">Select Game:</label>
+        <select name="game_id" id="game-select" onchange="this.form.submit()">
+            {% for game in games %}
+                <option value="{{ game['GameID'] }}"
+                    {% if game['GameID'] == selected_game_id %}selected{% endif %}>
+                    {{ game['GameName'] }}
+                </option>
+            {% endfor %}
+        </select>
+    </form>
+
+    <!-- Leaderboard table -->
+    <table id="games-table">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Best Time</th>
+                <th>Submission Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for run in runs %}
+            <tr class="{% if loop.index == 1 %}first-place{% elif loop.index == 2 %}second-place{% elif loop.index == 3 %}third-place{% endif %}">
+                <td>{{ loop.index }}</td>
+                <td>{{ run['PlayerName'] }}</td>
+                <td>{{ run['Time'] }}</td>
+                <td>{{ run['SubmissionDate'] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Step graph under table -->
+    <h3>Best Run History</h3>
+    <div class="chart-container" style="max-width: 900px; margin: 0 auto;">
+        <canvas id="history-chart"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const historyData = {{ historical_best|tojson }};
+const labels = historyData.map(item => item.date);
+const times = historyData.map(item => item.best_time);
+
+// Helper to detect dark mode
+function isDarkModeActive() {
+    return document.body.classList.contains('dark-mode');
+}
+
+// Function to generate chart options dynamically
+function getChartOptions(forceDark=false) {
+    const dark = forceDark || isDarkModeActive();
+    const textColor = dark ? '#f1f1f1' : '#111'; // black in light mode
+    const gridColor = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
+    return {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: true,
+                labels: { color: textColor }
+            }
+        },
+        scales: {
+            x: {
+                title: { display: true, text: 'Submission Date', color: textColor },
+                ticks: { color: textColor },
+                grid: { color: gridColor }
+            },
+            y: {
+                title: { display: true, text: 'Time', color: textColor },
+                ticks: { color: textColor },
+                grid: { color: gridColor },
+                beginAtZero: false
+            }
+        }
+    };
+}
+
+// Create chart with default text color as white
+const ctx = document.getElementById('history-chart').getContext('2d');
+const historyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [{
+            label: 'Best Time',
+            data: times,
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            fill: false,
+            stepped: true,
+            tension: 0,
+            pointBackgroundColor: '#4bc0c0'
+        }]
+    },
+    options: getChartOptions(true)  // force initial text color to white
+});
+
+// Update chart colors when dark mode is toggled
+document.getElementById('dark-mode-toggle').addEventListener('click', () => {
+    setTimeout(() => {
+        const dark = isDarkModeActive();
+        const textColor = dark ? '#f1f1f1' : '#111';
+        const gridColor = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
+
+        // Update options dynamically
+        historyChart.options = getChartOptions();
+        historyChart.data.datasets[0].borderColor = dark ? 'rgb(0, 255, 255)' : 'rgb(75, 192, 192)';
+        historyChart.data.datasets[0].backgroundColor = dark ? 'rgba(0, 255, 255, 0.2)' : 'rgba(75, 192, 192, 0.2)';
+        historyChart.data.datasets[0].pointBackgroundColor = dark ? '#0ff' : '#4bc0c0';
+        historyChart.update();
+    }, 50);
+});
+</script>
+{% endblock %}

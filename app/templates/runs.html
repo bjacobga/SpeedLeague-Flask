@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="centered-content">
+    <h2>Player Runs</h2>
+</div>
+
+<!-- Player selection -->
+<form method="get" action="{{ url_for('main.runs') }}">
+    <label for="player-select">Select Player:</label>
+    <select id="player-select" name="player_id" onchange="this.form.submit()">
+        {% for player in players %}
+            <option value="{{ player['PlayerID'] }}" {% if player['PlayerID'] == selected_player_id %}selected{% endif %}>
+                {{ player['PlayerName'] }}
+            </option>
+        {% endfor %}
+    </select>
+</form>
+
+<!-- Runs table -->
+<table id="runs-table">
+    <thead>
+        <tr>
+            <th>Game</th>
+            <th>Time</th>
+            <th>Submission Date</th>
+            <th>Rank</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for run in runs %}
+        <tr class="
+            {% if run['Rank'] == 1 %}first-place
+            {% elif run['Rank'] == 2 %}second-place
+            {% elif run['Rank'] == 3 %}third-place
+            {% endif %}
+        ">
+            <td>{{ run['Game']['GameName'] }}</td>
+            <td>{{ run['Time'] }}</td>
+            <td>{{ run['SubmissionDate'] }}</td>
+            <td>{{ run['Rank'] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+{% endblock %}
