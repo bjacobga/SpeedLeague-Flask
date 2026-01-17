@@ -40,53 +40,24 @@
 
     <!-- Step graph under table -->
     <h3>Best Run History</h3>
-    <div class="chart-container" style="max-width: 900px; margin: 0 auto;">
+    <div class="chart-wrapper">
         <canvas id="history-chart"></canvas>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+const ctx = document.getElementById('history-chart').getContext('2d');
 const historyData = {{ historical_best|tojson }};
 const labels = historyData.map(item => item.date);
 const times = historyData.map(item => item.best_time);
 
-// Helper to detect dark mode
+// Function to detect dark mode
 function isDarkModeActive() {
     return document.body.classList.contains('dark-mode');
 }
 
-// Function to generate chart options dynamically
-function getChartOptions(forceDark=false) {
-    const dark = forceDark || isDarkModeActive();
-    const textColor = dark ? '#f1f1f1' : '#111'; // black in light mode
-    const gridColor = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
-    return {
-        responsive: true,
-        plugins: {
-            legend: {
-                display: true,
-                labels: { color: textColor }
-            }
-        },
-        scales: {
-            x: {
-                title: { display: true, text: 'Submission Date', color: textColor },
-                ticks: { color: textColor },
-                grid: { color: gridColor }
-            },
-            y: {
-                title: { display: true, text: 'Time', color: textColor },
-                ticks: { color: textColor },
-                grid: { color: gridColor },
-                beginAtZero: false
-            }
-        }
-    };
-}
-
-// Create chart with default text color as white
-const ctx = document.getElementById('history-chart').getContext('2d');
+// Create chart with default text white (good for dark mode)
 const historyChart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -94,28 +65,51 @@ const historyChart = new Chart(ctx, {
         datasets: [{
             label: 'Best Time',
             data: times,
-            borderColor: 'rgb(75, 192, 192)',
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgb(0, 255, 255)',
+            backgroundColor: 'rgba(0, 255, 255, 0.2)',
             fill: false,
             stepped: true,
             tension: 0,
-            pointBackgroundColor: '#4bc0c0'
+            pointBackgroundColor: '#0ff'
         }]
     },
-    options: getChartOptions(true)  // force initial text color to white
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { 
+                display: true,
+                labels: { color: '#fff' } // default white
+            }
+        },
+        scales: {
+            x: { 
+                title: { display: true, text: 'Submission Date', color: '#fff' },
+                ticks: { color: '#fff' },
+                grid: { color: 'rgba(255,255,255,0.2)' }
+            },
+            y: { 
+                title: { display: true, text: 'Time', color: '#fff' },
+                ticks: { color: '#fff' },
+                grid: { color: 'rgba(255,255,255,0.2)' },
+                beginAtZero: false
+            }
+        }
+    }
 });
 
-// Update chart colors when dark mode is toggled
+// Update chart colors when dark mode toggled
 document.getElementById('dark-mode-toggle').addEventListener('click', () => {
     setTimeout(() => {
         const dark = isDarkModeActive();
-        const textColor = dark ? '#f1f1f1' : '#111';
-        const gridColor = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
-
-        // Update options dynamically
-        historyChart.options = getChartOptions();
-        historyChart.data.datasets[0].borderColor = dark ? 'rgb(0, 255, 255)' : 'rgb(75, 192, 192)';
-        historyChart.data.datasets[0].backgroundColor = dark ? 'rgba(0, 255, 255, 0.2)' : 'rgba(75, 192, 192, 0.2)';
+        historyChart.options.scales.x.title.color = dark ? '#fff' : '#111';
+        historyChart.options.scales.y.title.color = dark ? '#fff' : '#111';
+        historyChart.options.scales.x.ticks.color = dark ? '#fff' : '#111';
+        historyChart.options.scales.y.ticks.color = dark ? '#fff' : '#111';
+        historyChart.options.scales.x.grid.color = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
+        historyChart.options.scales.y.grid.color = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
+        historyChart.options.plugins.legend.labels.color = dark ? '#fff' : '#111';
+        historyChart.data.datasets[0].borderColor = dark ? 'rgb(0,255,255)' : 'rgb(75,192,192)';
+        historyChart.data.datasets[0].backgroundColor = dark ? 'rgba(0,255,255,0.2)' : 'rgba(75,192,192,0.2)';
         historyChart.data.datasets[0].pointBackgroundColor = dark ? '#0ff' : '#4bc0c0';
         historyChart.update();
     }, 50);

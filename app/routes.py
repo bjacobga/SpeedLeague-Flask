@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, request
-from app.supabase_client import supabase
+from flask import Blueprint, render_template, request, redirect, url_for
+from .supabase_client import supabase
+from datetime import datetime, date
 
 main = Blueprint("main", __name__)
 
@@ -190,6 +191,44 @@ def games():
             selected_game_id=selected_game_id,
             runs=leaderboard_runs,
             historical_best=historical_best  # for the chart
+        )
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}, 500
+    
+# <-- This should NOT be indented under /games
+@main.route("/submit-run", methods=["GET", "POST"])
+def submit_run():
+    try:
+        # Fetch games
+        games_response = supabase.table("Game").select("*").execute()
+        games = games_response.data
+
+        # Fetch players
+        players_response = supabase.table("Player").select("*").execute()
+        players = players_response.data
+
+        message = None
+
+        if request.method == "POST":
+            player_id = int(request.form["player_id"])
+            game_id = int(request.form["game_id"])
+            time = float(request.form["time"])
+
+            supabase.table("Run").insert({
+                "PlayerID": player_id,
+                "GameID": game_id,
+                "Time": time,
+                "SubmissionDate": datetime.utcnow().isoformat()
+            }).execute()
+
+            message = "Run submitted successfully!"
+
+        return render_template(
+            "submit_run.html",
+            games=games,
+            players=players,
+            message=message
         )
 
     except Exception as e:

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="centered-content">
+    <h2>Submit a Run</h2>
+
+    {% if message %}
+        <p class="success-message">{{ message }}</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('main.submit_run') }}" class="submission-form">
+
+        <!-- Player dropdown -->
+        <label for="player_id">Player</label>
+        <select name="player_id" id="player_id" required>
+            {% for player in players %}
+                <option value="{{ player['PlayerID'] }}">
+                    {{ player['PlayerName'] }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <!-- Game dropdown -->
+        <label for="game_id">Game</label>
+        <select name="game_id" id="game_id" required>
+            {% for game in games %}
+                <option value="{{ game['GameID'] }}">
+                    {{ game['GameName'] }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <!-- Time input -->
+        <label for="time">Time (seconds)</label>
+        <input
+            type="number"
+            name="time"
+            id="time"
+            step="0.01"
+            min="0"
+            placeholder="e.g. 123.45"
+            required
+        >
+
+        <button type="submit">Submit Run</button>
+    </form>
+</div>
+
+{% endblock %}
