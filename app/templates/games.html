@@ -1,118 +1,47 @@
 {% extends "base.html" %}
+{% block title %}Games — SpeedLeague{% endblock %}
+
 {% block content %}
-<div class="centered-content">
-    <h2>Game Leaderboard</h2>
+<div class="page-header">
+    <h1>Games</h1>
+</div>
 
-    <!-- Game selection dropdown -->
-    <form method="get" action="{{ url_for('main.games') }}">
-        <label for="game-select">Select Game:</label>
-        <select name="game_id" id="game-select" onchange="this.form.submit()">
-            {% for game in games %}
-                <option value="{{ game['GameID'] }}"
-                    {% if game['GameID'] == selected_game_id %}selected{% endif %}>
-                    {{ game['GameName'] }}
-                </option>
-            {% endfor %}
-        </select>
-    </form>
+<div class="tab-bar" id="game-tabs">
+    {% for game in games %}
+    <button class="tab{% if loop.first %} active{% endif %}" data-game-id="{{ game.id }}">
+        {{ game.name }}
+    </button>
+    {% endfor %}
+</div>
 
-    <!-- Leaderboard table -->
-    <table id="games-table">
+<div class="section">
+    <h2 class="section-title" id="game-title">{{ games[0].name if games else '' }}</h2>
+    <table class="leaderboard-table">
         <thead>
             <tr>
                 <th>Rank</th>
                 <th>Player</th>
                 <th>Best Time</th>
-                <th>Submission Date</th>
+                <th>Points</th>
             </tr>
         </thead>
-        <tbody>
-            {% for run in runs %}
-            <tr class="{% if loop.index == 1 %}first-place{% elif loop.index == 2 %}second-place{% elif loop.index == 3 %}third-place{% endif %}">
-                <td>{{ loop.index }}</td>
-                <td>{{ run['PlayerName'] }}</td>
-                <td>{{ run['Time'] }}</td>
-                <td>{{ run['SubmissionDate'] }}</td>
-            </tr>
-            {% endfor %}
+        <tbody id="game-leaderboard-body">
+            <tr><td colspan="4" class="loading-cell">Select a game above</td></tr>
         </tbody>
     </table>
-
-    <!-- Step graph under table -->
-    <h3>Best Run History</h3>
-    <div class="chart-wrapper">
-        <canvas id="history-chart"></canvas>
-    </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="section">
+    <h2 class="section-title">World Record Progression</h2>
+    <div class="chart-container">
+        <canvas id="game-chart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-const ctx = document.getElementById('history-chart').getContext('2d');
-const historyData = {{ historical_best|tojson }};
-const labels = historyData.map(item => item.date);
-const times = historyData.map(item => item.best_time);
-
-// Function to detect dark mode
-function isDarkModeActive() {
-    return document.body.classList.contains('dark-mode');
-}
-
-// Create chart with default text white (good for dark mode)
-const historyChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: labels,
-        datasets: [{
-            label: 'Best Time',
-            data: times,
-            borderColor: 'rgb(0, 255, 255)',
-            backgroundColor: 'rgba(0, 255, 255, 0.2)',
-            fill: false,
-            stepped: true,
-            tension: 0,
-            pointBackgroundColor: '#0ff'
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: {
-            legend: { 
-                display: true,
-                labels: { color: '#fff' } // default white
-            }
-        },
-        scales: {
-            x: { 
-                title: { display: true, text: 'Submission Date', color: '#fff' },
-                ticks: { color: '#fff' },
-                grid: { color: 'rgba(255,255,255,0.2)' }
-            },
-            y: { 
-                title: { display: true, text: 'Time', color: '#fff' },
-                ticks: { color: '#fff' },
-                grid: { color: 'rgba(255,255,255,0.2)' },
-                beginAtZero: false
-            }
-        }
-    }
-});
-
-// Update chart colors when dark mode toggled
-document.getElementById('dark-mode-toggle').addEventListener('click', () => {
-    setTimeout(() => {
-        const dark = isDarkModeActive();
-        historyChart.options.scales.x.title.color = dark ? '#fff' : '#111';
-        historyChart.options.scales.y.title.color = dark ? '#fff' : '#111';
-        historyChart.options.scales.x.ticks.color = dark ? '#fff' : '#111';
-        historyChart.options.scales.y.ticks.color = dark ? '#fff' : '#111';
-        historyChart.options.scales.x.grid.color = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
-        historyChart.options.scales.y.grid.color = dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)';
-        historyChart.options.plugins.legend.labels.color = dark ? '#fff' : '#111';
-        historyChart.data.datasets[0].borderColor = dark ? 'rgb(0,255,255)' : 'rgb(75,192,192)';
-        historyChart.data.datasets[0].backgroundColor = dark ? 'rgba(0,255,255,0.2)' : 'rgba(75,192,192,0.2)';
-        historyChart.data.datasets[0].pointBackgroundColor = dark ? '#0ff' : '#4bc0c0';
-        historyChart.update();
-    }, 50);
-});
+    const gameData = {{ game_data_json | safe }};
+    const games    = {{ games | tojson }};
 </script>
 {% endblock %}

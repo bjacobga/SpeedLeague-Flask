@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Submit Run — SpeedLeague{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Submit a Run</h1>
+    <p class="page-subtitle">Logged in as <strong>{{ current_user.username }}</strong></p>
+</div>
+
+<div class="form-card">
+    {% if message %}
+    <div class="alert alert-success">{{ message }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('main.submit') }}" class="run-form">
+        <div class="form-group">
+            <label for="game_id">Game</label>
+            <select name="game_id" id="game_id" required>
+                {% for game in games %}
+                <option value="{{ game.id }}">{{ game.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="time">Time</label>
+            <input
+                type="text"
+                name="time"
+                id="time"
+                placeholder="0:00:00.000"
+                pattern="^\d+:\d{2}:\d{2}(\.\d+)?$"
+                title="Format: H:MM:SS.mmm"
+                required
+                autocomplete="off"
+                spellcheck="false"
+            >
+            <span class="form-hint">Format: H:MM:SS.mmm &nbsp;(e.g. 0:05:32.480)</span>
+        </div>
+
+        <button type="submit" class="btn-primary">Submit Run</button>
+    </form>
+</div>
+{% endblock %}

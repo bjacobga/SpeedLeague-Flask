@@ -1,235 +1,253 @@
-from flask import Blueprint, render_template, request, redirect, url_for
+import json
+from collections import defaultdict
+from datetime import datetime, date, timezone
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required, current_user
+
 from .supabase_client import supabase
-from datetime import datetime, date
+from .utils import format_time, parse_time, compute_overall_standings, POINTS_MAP
 
-main = Blueprint("main", __name__)
+main = Blueprint('main', __name__)
 
-POINTS_BY_PLACE = [10, 8, 6, 5, 4, 3, 2, 1]  # Example scoring
 
-def compute_points(runs):
-    from collections import defaultdict
-    points_per_player = defaultdict(int)
-    
-    # Group runs by game
-    runs_by_game = defaultdict(list)
-    for run in runs:
-        try:
-            time_sec = float(run["Time"])
-        except ValueError:
-            time_sec = float("inf")
-        run["TimeSeconds"] = time_sec
-        runs_by_game[run["GameID"]].append(run)
-    
-    # Assign points per game
-    for game_runs in runs_by_game.values():
-        game_runs.sort(key=lambda x: x["TimeSeconds"])  # fastest first
-        for i, run in enumerate(game_runs):
-            if i < len(POINTS_BY_PLACE):
-                points_per_player[run["PlayerName"]] += POINTS_BY_PLACE[i]
-    
-    return points_per_player
+def _get_games():
+    return supabase.table('games').select('*').order('display_order').execute().data or []
 
-@main.route("/")
+
+def _get_players():
+    return supabase.table('players').select('id, username').execute().data or []
+
+
+def _get_all_runs():
+    return (
+        supabase.table('runs')
+        .select('id, player_id, game_id, time_seconds, submitted_at')
+        .order('submitted_at')
+        .execute()
+        .data or []
+    )
+
+
+@main.route('/')
 def index():
-    try:
-        response = supabase.table("Run")\
-            .select('"Submission #", PlayerID, PlayerName, GameID, Time, SubmissionDate, Game(GameName, Category)')\
-            .execute()
-        response.raise_when_api_error("Failed to fetch runs")
+    games = _get_games()
+    players = _get_players()
+    runs = _get_all_runs()
 
-        runs = response.data
-        leaderboard_points = compute_points(runs)
-        # Sort leaderboard descending
-        leaderboard_sorted = sorted(leaderboard_points.items(), key=lambda x: x[1], reverse=True)
+    player_map = {p['id']: p['username'] for p in players}
+    game_map = {g['id']: g['name'] for g in games}
+    game_ids = [g['id'] for g in games]
 
-        return render_template("index.html", leaderboard=leaderboard_sorted)
+    best_times = {}
+    for run in runs:
+        key = (run['player_id'], run['game_id'])
+        if key not in best_times or run['time_seconds'] < best_times[key]:
+            best_times[key] = run['time_seconds']
 
-    except Exception as e:
-        return {"status": "exception", "message": str(e)}, 500
+    standings = compute_overall_standings(best_times, list(player_map.keys()), game_ids)
 
+    leaderboard = []
+    for s in standings:
+        pid = s['player_id']
+        per_game = [
+            {
+                'game_name': game_map.get(gid, '?'),
+                'points': pts,
+                'time': format_time(best_times.get((pid, gid))),
+            }
+            for gid, pts in sorted(s['game_points'].items(), key=lambda x: game_map.get(x[0], ''))
+        ]
+        leaderboard.append({
+            'username': player_map.get(pid, 'Unknown'),
+            'points': s['points'],
+            'per_game': per_game,
+        })
 
-@main.route("/runs")
-def runs():
-    try:
-        from flask import request  # make sure request is imported at the top
-
-        # Get selected player ID from query string
-        selected_player_id = request.args.get("player_id", type=int)
-
-        # Fetch all players for the dropdown
-        players_response = supabase.table("Player").select("*").execute()
-        players_response.raise_when_api_error("Failed to fetch players")
-        players_list = players_response.data
-
-        # Default to first player if none selected
-        if selected_player_id is None and players_list:
-            selected_player_id = players_list[0]["PlayerID"]
-
-        # Fetch all games for rank calculation
-        games_response = supabase.table("Game").select("*").execute()
-        games_response.raise_when_api_error("Failed to fetch games")
-        games_list = games_response.data
-        game_ids = [g["GameID"] for g in games_list]
-
-        # Fetch runs for the selected player
-        runs_response = (
-            supabase
-            .table("Run")
-            .select("PlayerID, PlayerName, GameID, Game(GameName), Time, SubmissionDate")
-            .eq("PlayerID", selected_player_id)
-            .execute()
-        )
-        runs_response.raise_when_api_error(f"Failed to fetch runs for player {selected_player_id}")
-        all_runs = runs_response.data
-
-        # Keep only the best run per game
-        best_runs = {}
-        for run in all_runs:
-            game_id = run["GameID"]
-            run_time = float(run["Time"])
-            if game_id not in best_runs or run_time < float(best_runs[game_id]["Time"]):
-                best_runs[game_id] = run
-
-        # For each best run, calculate the rank on that game's leaderboard
-        runs_with_rank = []
-        for run in best_runs.values():
-            game_id = run["GameID"]
-            # Fetch all runs for this game to calculate rank
-            game_runs_response = (
-                supabase
-                .table("Run")
-                .select("PlayerID, Time")
-                .eq("GameID", game_id)
-                .execute()
-            )
-            game_runs_response.raise_when_api_error(f"Failed to fetch runs for game {game_id}")
-            game_runs = game_runs_response.data
-            # Sort runs by time ascending
-            sorted_game_runs = sorted(game_runs, key=lambda r: float(r["Time"]))
-            # Determine rank
-            for i, r in enumerate(sorted_game_runs, start=1):
-                if r["PlayerID"] == selected_player_id:
-                    run["Rank"] = i
-                    break
-            runs_with_rank.append(run)
-
-        # Sort by game name for display
-        runs_sorted = sorted(runs_with_rank, key=lambda r: r["Game"]["GameName"])
-
-        return render_template(
-            "runs.html",
-            players=players_list,
-            selected_player_id=selected_player_id,
-            runs=runs_sorted
-        )
-
-    except Exception as e:
-        return {"status": "error", "message": str(e)}, 500
-
-@main.route("/docs")
-def docs():
-    return render_template("documentation.html")
+    return render_template('index.html', leaderboard=leaderboard, games=games)
 
 
-@main.route("/games")
+@main.route('/games')
 def games():
-    try:
-        from flask import request
-        from datetime import date
+    games_list = _get_games()
+    players = _get_players()
+    runs = _get_all_runs()
 
-        selected_game_id = request.args.get("game_id", type=int)
+    player_map = {p['id']: p['username'] for p in players}
 
-        # Fetch all games for the dropdown
-        games_response = supabase.table("Game").select("*").execute()
-        games_response.raise_when_api_error("Failed to fetch games")
-        games_list = games_response.data
+    game_data = {}
+    for game in games_list:
+        gid = game['id']
+        game_runs = [r for r in runs if r['game_id'] == gid]
 
-        # Default to first game if none selected
-        if selected_game_id is None and games_list:
-            selected_game_id = games_list[0]["GameID"]
+        best_per_player = {}
+        for run in game_runs:
+            pid = run['player_id']
+            if pid not in best_per_player or run['time_seconds'] < best_per_player[pid]:
+                best_per_player[pid] = run['time_seconds']
 
-        # Fetch all runs for this game
-        runs_response = (
-            supabase
-            .table("Run")
-            .select("PlayerID, PlayerName, Time, SubmissionDate")
-            .eq("GameID", selected_game_id)
-            .order("SubmissionDate")  # earliest first
-            .execute()
+        leaderboard = sorted(
+            [
+                {
+                    'username': player_map.get(pid, '?'),
+                    'time_seconds': t,
+                    'time_display': format_time(t),
+                }
+                for pid, t in best_per_player.items()
+            ],
+            key=lambda x: x['time_seconds'],
         )
-        runs_response.raise_when_api_error(f"Failed to fetch runs for game {selected_game_id}")
-        all_runs = runs_response.data
+        for i, entry in enumerate(leaderboard):
+            entry['rank'] = i + 1
+            entry['points'] = POINTS_MAP[i] if i < len(POINTS_MAP) else 0
 
-        # Track the historical best times for the graph
-        historical_best = []
-        best_time_so_far = None
-        for run in all_runs:
-            run_time = float(run["Time"])
-            run_date = run["SubmissionDate"]
-            if best_time_so_far is None or run_time < best_time_so_far:
-                best_time_so_far = run_time
-            historical_best.append({"date": run_date, "best_time": best_time_so_far})
+        history = []
+        best_so_far = None
+        for run in game_runs:
+            t = run['time_seconds']
+            if best_so_far is None or t < best_so_far:
+                best_so_far = t
+                history.append({
+                    'date': run['submitted_at'][:10],
+                    'time_seconds': best_so_far,
+                    'time_display': format_time(best_so_far),
+                })
 
-        # Add a point for today
-        today_str = date.today().isoformat()
-        if not historical_best or historical_best[-1]["date"] != today_str:
-            last_best_time = historical_best[-1]["best_time"] if historical_best else None
-            historical_best.append({"date": today_str, "best_time": last_best_time})
+        today = date.today().isoformat()
+        if history and history[-1]['date'] != today:
+            history.append({
+                'date': today,
+                'time_seconds': history[-1]['time_seconds'],
+                'time_display': history[-1]['time_display'],
+            })
 
-        # For the leaderboard, only keep best run per player
-        best_runs_per_player = {}
-        for run in all_runs:
-            pid = run["PlayerID"]
-            run_time = float(run["Time"])
-            if pid not in best_runs_per_player or run_time < float(best_runs_per_player[pid]["Time"]):
-                best_runs_per_player[pid] = run
-        leaderboard_runs = sorted(best_runs_per_player.values(), key=lambda r: float(r["Time"]))
+        game_data[str(gid)] = {
+            'leaderboard': leaderboard,
+            'history': history,
+        }
 
-        return render_template(
-            "games.html",
-            games=games_list,
-            selected_game_id=selected_game_id,
-            runs=leaderboard_runs,
-            historical_best=historical_best  # for the chart
-        )
+    return render_template(
+        'games.html',
+        games=games_list,
+        game_data_json=json.dumps(game_data),
+    )
 
-    except Exception as e:
-        return {"status": "error", "message": str(e)}, 500
-    
-# <-- This should NOT be indented under /games
-@main.route("/submit-run", methods=["GET", "POST"])
-def submit_run():
-    try:
-        # Fetch games
-        games_response = supabase.table("Game").select("*").execute()
-        games = games_response.data
 
-        # Fetch players
-        players_response = supabase.table("Player").select("*").execute()
-        players = players_response.data
+@main.route('/players')
+def players():
+    games_list = _get_games()
+    players_list = _get_players()
+    runs = _get_all_runs()
 
-        message = None
+    game_map = {g['id']: g['name'] for g in games_list}
 
-        if request.method == "POST":
-            player_id = int(request.form["player_id"])
-            game_id = int(request.form["game_id"])
-            time = float(request.form["time"])
+    game_rankings = {}
+    for game in games_list:
+        gid = game['id']
+        best = {}
+        for run in runs:
+            if run['game_id'] != gid:
+                continue
+            pid = run['player_id']
+            if pid not in best or run['time_seconds'] < best[pid]:
+                best[pid] = run['time_seconds']
+        sorted_pids = sorted(best, key=lambda p: best[p])
+        game_rankings[gid] = {pid: rank + 1 for rank, pid in enumerate(sorted_pids)}
 
-            supabase.table("Run").insert({
-                "PlayerID": player_id,
-                "GameID": game_id,
-                "Time": time,
-                "SubmissionDate": datetime.utcnow().isoformat()
+    player_data = {}
+    for player in players_list:
+        pid = player['id']
+        player_runs = [r for r in runs if r['player_id'] == pid]
+
+        best_per_game = {}
+        for run in player_runs:
+            gid = run['game_id']
+            if gid not in best_per_game or run['time_seconds'] < best_per_game[gid]:
+                best_per_game[gid] = run['time_seconds']
+
+        best_times = []
+        for game in games_list:
+            gid = game['id']
+            t = best_per_game.get(gid)
+            rank = game_rankings.get(gid, {}).get(pid)
+            pts = POINTS_MAP[rank - 1] if rank and rank <= len(POINTS_MAP) else 0
+            best_times.append({
+                'game_id': gid,
+                'game_name': game['name'],
+                'time_seconds': t,
+                'time_display': format_time(t) if t is not None else '-',
+                'rank': rank,
+                'points': pts,
+            })
+
+        history = {}
+        for game in games_list:
+            gid = game['id']
+            game_player_runs = sorted(
+                [r for r in player_runs if r['game_id'] == gid],
+                key=lambda r: r['submitted_at'],
+            )
+            pb = None
+            game_history = []
+            for run in game_player_runs:
+                t = run['time_seconds']
+                if pb is None or t < pb:
+                    pb = t
+                    game_history.append({
+                        'date': run['submitted_at'][:10],
+                        'time_seconds': pb,
+                        'time_display': format_time(pb),
+                    })
+            if game_history:
+                today = date.today().isoformat()
+                if game_history[-1]['date'] != today:
+                    game_history.append({
+                        'date': today,
+                        'time_seconds': game_history[-1]['time_seconds'],
+                        'time_display': game_history[-1]['time_display'],
+                    })
+            history[str(gid)] = game_history
+
+        player_data[str(pid)] = {
+            'best_times': best_times,
+            'history': history,
+        }
+
+    return render_template(
+        'players.html',
+        players=players_list,
+        games=games_list,
+        player_data_json=json.dumps(player_data),
+    )
+
+
+@main.route('/submit', methods=['GET', 'POST'])
+@login_required
+def submit():
+    games_list = _get_games()
+    message = None
+    error = None
+
+    if request.method == 'POST':
+        game_id = request.form.get('game_id', type=int)
+        time_str = request.form.get('time', '').strip()
+
+        try:
+            time_seconds = parse_time(time_str)
+            if time_seconds <= 0:
+                raise ValueError('Time must be positive.')
+
+            supabase.table('runs').insert({
+                'player_id': current_user.id,
+                'game_id': game_id,
+                'time_seconds': time_seconds,
+                'submitted_at': datetime.now(timezone.utc).isoformat(),
             }).execute()
 
-            message = "Run submitted successfully!"
+            message = f"Run submitted: {format_time(time_seconds)}"
+        except ValueError as e:
+            error = f"Invalid time: {e}"
+        except Exception as e:
+            error = f"Submission failed: {e}"
 
-        return render_template(
-            "submit_run.html",
-            games=games,
-            players=players,
-            message=message
-        )
-
-    except Exception as e:
-        return {"status": "error", "message": str(e)}, 500
+    return render_template('submit.html', games=games_list, message=message, error=error)

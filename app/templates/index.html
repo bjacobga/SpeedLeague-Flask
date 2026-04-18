@@ -1,46 +1,50 @@
 {% extends "base.html" %}
+{% block title %}Standings — SpeedLeague{% endblock %}
 
 {% block content %}
-<section id="overview">
-    <div class="centered-content">
-        <h2>What is SpeedLeague?</h2>
-        <div class="scrollable">
-            <p>
-                SpeedLeague is a 12-month speedrun competition across 9 games. 
-                Players compete for the fastest times in each game, earn points 
-                based on placement, and the player with the most total points 
-                across all games wins!
-            </p>
-        </div>
-    </div>
-</section>
+<div class="page-header">
+    <h1>Overall Standings</h1>
+    <p class="page-subtitle">Top 8 of 9 games count &nbsp;·&nbsp; 1st = 10 pts, 2nd = 9 pts, …</p>
+</div>
 
-<section id="leaderboard">
-    <div class="centered-content">
-        <h2>Overall Leaderboard</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Rank</th>
-                    <th>Player</th>
-                    <th>Points</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for player, points in leaderboard %}
-                <tr class="
-                    {% if loop.index == 1 %}first-place
-                    {% elif loop.index == 2 %}second-place
-                    {% elif loop.index == 3 %}third-place
-                    {% endif %}
-                ">
-                    <td>{{ loop.index }}</td>
-                    <td>{{ player }}</td>
-                    <td>{{ points }}</td>
-                </tr>
+{% if leaderboard %}
+<div class="section">
+    <table class="leaderboard-table" id="standings-table">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Points</th>
+                {% for game in games %}
+                <th class="game-col">{{ game.name }}</th>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in leaderboard %}
+            <tr class="
+                {% if loop.index == 1 %}rank-gold
+                {% elif loop.index == 2 %}rank-silver
+                {% elif loop.index == 3 %}rank-bronze
+                {% endif %}
+            ">
+                <td class="rank-cell">{{ loop.index }}</td>
+                <td class="player-cell">{{ entry.username }}</td>
+                <td class="points-cell">{{ entry.points }}</td>
+                {% for pg in entry.per_game %}
+                <td class="time-cell">
+                    <span class="pts-badge">{{ pg.points }}pt</span>
+                    <span class="time-val">{{ pg.time }}</span>
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <p>No runs submitted yet. <a href="{{ url_for('auth.login') }}">Log in</a> to submit the first one!</p>
+</div>
+{% endif %}
 {% endblock %}
