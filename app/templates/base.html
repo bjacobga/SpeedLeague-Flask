@@ -1,32 +1,43 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
-    <title>SpeedLeague</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SpeedLeague{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
-    <!-- Dark Mode Toggle Button -->
-    <button id="dark-mode-toggle">🌙</button>
-
-    <!-- Header -->
     <header>
-        <h1>SpeedLeague</h1>
-        <nav>
-            <a href="{{ url_for('main.index') }}">Home</a> |
-            <a href="{{ url_for('main.games') }}">Games</a> |
-            <a href="{{ url_for('main.runs') }}">Runs</a> |
-            <a href="{{ url_for('main.docs') }}">Docs</a> |
-            <a href="{{ url_for('main.submit_run') }}">Submit a Run</a>
-        </nav>
+        <div class="header-inner">
+            <a class="logo" href="{{ url_for('main.index') }}">⚡ SpeedLeague</a>
+            <nav>
+                <a href="{{ url_for('main.index') }}" {% if request.endpoint == 'main.index' %}class="active"{% endif %}>Standings</a>
+                <a href="{{ url_for('main.games') }}" {% if request.endpoint == 'main.games' %}class="active"{% endif %}>Games</a>
+                <a href="{{ url_for('main.players') }}" {% if request.endpoint == 'main.players' %}class="active"{% endif %}>Players</a>
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('main.submit') }}" class="nav-submit {% if request.endpoint == 'main.submit' %}active{% endif %}">Submit Run</a>
+                    <a href="{{ url_for('auth.logout') }}" class="nav-user">{{ current_user.username }} ↩</a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="nav-login">Login</a>
+                {% endif %}
+            </nav>
+            <button id="theme-toggle" title="Toggle light/dark mode">☀</button>
+        </div>
     </header>
 
-    <!-- Main Content -->
     <main>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-bar">
+                    {% for msg in messages %}<span>{{ msg }}</span>{% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Scripts -->
+    {% block scripts %}{% endblock %}
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

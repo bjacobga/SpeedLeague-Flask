@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Players — SpeedLeague{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Players</h1>
+</div>
+
+{% if players %}
+<div class="player-tabs" id="player-tabs">
+    {% for player in players %}
+    <button class="player-tab{% if loop.first %} active{% endif %}" data-player-id="{{ player.id }}">
+        {{ player.username }}
+    </button>
+    {% endfor %}
+</div>
+
+<div class="section">
+    <h2 class="section-title" id="player-title">{{ players[0].username }}</h2>
+    <table class="leaderboard-table">
+        <thead>
+            <tr>
+                <th>Game</th>
+                <th>Best Time</th>
+                <th>Rank</th>
+                <th>Points</th>
+            </tr>
+        </thead>
+        <tbody id="player-best-times-body">
+            <tr><td colspan="4" class="loading-cell">Loading…</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="section">
+    <h2 class="section-title">Personal Best History</h2>
+    <div class="charts-grid" id="charts-grid"></div>
+</div>
+{% else %}
+<div class="empty-state">
+    <p>No players yet.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const playerData = {{ player_data_json | safe }};
+    const players    = {{ players | tojson }};
+    const games      = {{ games | tojson }};
+</script>
+{% endblock %}
